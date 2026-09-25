@@ -25,7 +25,7 @@ export type Database = {
             foreignKeyName: 'habits_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'auth_users'
+            referencedRelation: 'users'
             referencedColumns: ['id']
           },
         ]
@@ -60,7 +60,39 @@ export type Database = {
             foreignKeyName: 'daily_logs_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'auth_users'
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          id: string
+          updated_at: string
+          username: string | null
+          full_name: string | null
+          avatar_url: string | null
+        }
+        Insert: {
+          id: string
+          updated_at?: string
+          username?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+        }
+        Update: {
+          id?: string
+          updated_at?: string
+          username?: string | null
+          full_name?: string | null
+          avatar_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'profiles_id_fkey'
+            columns: ['id']
+            isOneToOne: true
+            referencedRelation: 'users'
             referencedColumns: ['id']
           },
         ]
