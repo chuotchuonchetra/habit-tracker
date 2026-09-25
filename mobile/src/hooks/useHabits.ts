@@ -1,7 +1,9 @@
-// src/hooks/useHabits.ts
+// mobile/src/hooks/useHabits.ts
 //
-// React state over the shared queries in ../lib/habitQueries. The Expo app's
-// hook is the same shape over the same functions; only this file differs.
+// The Expo twin of src/hooks/useHabits.ts. The two files differ only in what
+// they import and in the handful of offline bits the web app has (the web build
+// queues writes to localStorage; there is no equivalent here, so this port is
+// online-only and says so rather than pretending otherwise).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
@@ -14,7 +16,7 @@ import {
   type ActionResult,
   type Habit,
   type HabitUpdate,
-} from '../lib/habitQueries'
+} from '../../../src/lib/habitQueries'
 
 export type { ActionResult, Habit, HabitUpdate }
 export { todayISO }
@@ -28,9 +30,6 @@ export function useHabits(userId: string) {
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
 
-  // Mirrors completedIds so setCompleted can read live state from a stable
-  // callback. Replayed offline actions run long after the render that queued
-  // them, so reading the state closure would replay a stale decision.
   const completedIdsRef = useRef(completedIds)
   useEffect(() => {
     completedIdsRef.current = completedIds
@@ -41,7 +40,6 @@ export function useHabits(userId: string) {
 
     async function run() {
       const result = await loadHabits(supabase)
-
       if (cancelled) return
       if (result.ok) {
         setHabits(result.snapshot.habits)
@@ -54,7 +52,6 @@ export function useHabits(userId: string) {
     }
 
     void run()
-
     return () => {
       cancelled = true
     }
@@ -93,12 +90,10 @@ export function useHabits(userId: string) {
   const setCompleted = useCallback(
     async (habitId: string, completed: boolean): Promise<ActionResult> => {
       setPendingId(habitId)
-
       const { error } = await setHabitCompleted(supabase, userId, habitId, completed, {
         today: todayISO(),
         isCompleted: completedIdsRef.current.has(habitId),
       })
-
       if (!error) {
         setCompletedIds((prev) => {
           const next = new Set(prev)

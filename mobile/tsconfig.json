@@ -1,0 +1,16 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts",
+    "../src/lib/types.ts",
+    "../src/lib/supabaseClient.ts",
+    "../src/lib/habitQueries.ts"
+  ],
+  "exclude": ["node_modules"]
+}

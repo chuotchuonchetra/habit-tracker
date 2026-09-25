@@ -53,15 +53,15 @@ PWA v1.3.0  precache 20 entries (545.10 KiB)
 ### After
 
 ```
-dist/manifest.webmanifest                             0.51 kB
-dist/index.html                                        0.84 kB │ gzip:   0.44 kB
-dist/assets/index-DRdjCcz7.css                        21.48 kB │ gzip:   5.02 kB
-dist/assets/workbox-window.prod.es5-Bd17z0YL.js        5.65 kB │ gzip:   2.20 kB
-dist/assets/Habits-Ca-5aG4w.js                        14.93 kB │ gzip:   4.73 kB
-dist/assets/index-CAXlpkXw.js                        385.81 kB │ gzip: 110.56 kB
+dist/manifest.webmanifest                          0.51 kB
+dist/index.html                                     0.84 kB │ gzip:   0.44 kB
+dist/assets/index-CkLQunqh.css                     19.80 kB │ gzip:   4.76 kB
+dist/assets/workbox-window.prod.es5-Bd17z0YL.js     5.65 kB │ gzip:   2.20 kB
+dist/assets/Habits-Chi67nah.js                     15.34 kB │ gzip:   4.88 kB
+dist/assets/index-CwOBFgyK.js                     385.81 kB │ gzip: 110.56 kB
 
-✓ 66 modules transformed.
-PWA v1.3.0  precache 20 entries (477.55 KiB)
+✓ 67 modules transformed.
+PWA v1.3.0  precache 20 entries (476.32 KiB)
 ```
 
 ### Delta
@@ -70,14 +70,22 @@ PWA v1.3.0  precache 20 entries (477.55 KiB)
 | --- | --- | --- | --- |
 | Entry chunk, minified | 455.38 kB | 385.81 kB | **−69.57 kB (−15.3%)** |
 | Entry chunk, gzip | 131.35 kB | 110.56 kB | **−20.79 kB (−15.8%)** |
-| All JS, gzip | 138.24 kB | 117.49 kB | **−20.75 kB (−15.0%)** |
-| Service-worker precache | 545.10 KiB | 477.55 KiB | **−67.55 KiB (−12.4%)** |
-| Modules transformed | 86 | 66 | −20 |
-| CSS, gzip | 5.03 kB | 5.02 kB | −0.01 kB |
+| All JS, gzip | 138.24 kB | 117.64 kB | **−20.60 kB (−14.9%)** |
+| Service-worker precache | 545.10 KiB | 476.32 KiB | **−68.78 KiB (−12.6%)** |
+| Modules transformed | 86 | 67 | −19 |
+| CSS, gzip | 5.03 kB | 4.76 kB | −0.27 kB |
 | `npm install` packages | 775 | 391 | **−384** |
 
 Nothing moved into a new lazy chunk, which is the point: the bytes came out of
 the entry, not out of view.
+
+`src/index.css` pins Tailwind's source set to the web app. `@import "tailwindcss"`
+alone auto-detects sources across the whole repository, so once `mobile/` was
+scaffolded its NativeWind class names were compiled into the web stylesheet
+(19.80 kB → 22.46 kB). `@import "tailwindcss" source(none)` plus explicit
+`@source` globs keeps the two apps' class vocabularies separate. The result was
+verified by extracting all 157 class tokens referenced from `src/**` and
+`index.html` and asserting each is present in the built stylesheet.
 
 ## 3. Dependency audit
 
@@ -93,7 +101,13 @@ the entry, not out of view.
 Effect: 384 fewer packages installed, and the "Web Bundling failed / Unable to
 resolve `virtual:pwa-register/react`" failure goes away because Metro is no
 longer in the picture. The Expo app is now a separate project with its own
-`package.json` (see `expo/`), which is where that dependency belongs.
+`package.json` (see `mobile/`), which is where that dependency belongs.
+
+One trap worth recording: `npx expo install` run from `mobile/` silently injected
+`"expo": "^46.0.21"` into the **root** `package.json`, which re-poisoned the root
+lockfile with 500+ Expo packages and recreated the original failure by a
+different route. `expo export` does not do this, only `expo install`. If the root
+manifest ever gains an `expo` entry again, that command is the cause.
 
 ### Replaced: `@supabase/supabase-js` → its three used sub-clients
 
@@ -177,3 +191,94 @@ files keep working. `VITE_SUPABASE_PUBLISHABLE_KEY` is the newer Supabase name
 for the same publishable/anon key; the Vercel dashboard name in the brief is
 `VITE_SUPABASE_ANON_KEY`, so that is the primary. `.env` is gitignored, and
 `.env.example` documents the two names with no values.
+
+The Expo app uses the `EXPO_PUBLIC_` prefix, which is also inlined into the
+bundle in cleartext. That is the same anon key, not a secret, but it is the one
+behavioural difference between the two `.env` files and the reason a value
+cannot simply be copied between them.
+
+## 6. The Expo port
+
+### What is shared, and what is not
+
+| Module | Shared | Notes |
+| --- | --- | --- |
+| `src/lib/types.ts` | yes | Supabase generated `Database` types |
+| `src/lib/supabaseClient.ts` | yes | Composed client, framework-free on purpose |
+| `src/lib/habitQueries.ts` | yes | All `.from()` calls; extracted from `useHabits` for this |
+| `src/hooks/useHabits.ts` | no | React state over the queries; thin, but RN-specific enough to keep local |
+| `src/lib/supabase.ts` | no | Storage adapter: `localStorage` vs AsyncStorage + PKCE |
+| Tailwind class strings | yes | Same tokens, two engines (v4 CSS-first vs v3 config) |
+| Share | no | **The only deliberate divergence** |
+
+Metro reaches across the tree via `watchFolders` + `nodeModulesPaths` in
+`mobile/metro.config.js`. Four things had to be true for the shared imports to
+bundle, each found by a failed export rather than by reading docs:
+
+1. `watchFolders` must include the root `node_modules`, not just the root `src`.
+   Metro will not consider files under a directory it does not watch.
+2. `nodeModulesPaths` alone is insufficient. The requiring file sits outside
+   `projectRoot`, so Metro's walk-up never reaches the root tree from it. The
+   `@supabase` scope has to be pinned explicitly with `extraNodeModules`.
+3. `unstable_enablePackageExports` must be **off**. `@supabase/auth-js` and its
+   siblings publish no `exports` field, only `main`, and the package-exports
+   resolver finds nothing.
+4. `disableHierarchicalLookup` must stay **off**. npm nests some of Expo's own
+   dependencies under `node_modules/expo/node_modules` instead of hoisting them
+   (`expo-asset`, `expo-constants`), and only the walk-up from the importing
+   file finds those. Disabling it looks like a monorepo hardening measure and is
+   exactly what breaks the build.
+   `babel-preset-expo` was likewise nested, and must be a direct devDependency
+   so Babel can resolve it relative to the config file.
+
+`mobile/` does not install its own copy of `@supabase/*`; the shared factory
+resolves the single set the web app already has, which rules out two live
+instances of the auth client.
+
+### The one platform branch
+
+`Platform` is referenced in exactly one file, `mobile/src/lib/share.ts`, as a
+single `Platform.select` resolved once at module scope:
+
+- `navigator.share` on web, `Share.share` on native.
+- The web arm is unreachable on native, and is additionally guarded with
+  `typeof nav?.share !== 'function'` because the Web Share API is missing on
+  desktop browsers and older mobile Safari and would otherwise throw a
+  `TypeError` on tap.
+- Called from one place: `HabitListScreen.tsx`.
+
+`SignInScreen` and `AddHabitScreen` originally branched on `Platform.OS` to set
+`KeyboardAvoidingView`'s `behavior`. That prop is removed rather than kept:
+`behavior` only has an effect on iOS, and Android already resizes via
+`adjustResize`, so the framework default gives correct behaviour on both
+platforms with one code path. `Alert.alert` replaces `window.confirm` outright
+rather than branching, since `Alert` exists on every platform Expo targets.
+
+An audit of `mobile/src` for `navigator`, `window.`, `document.`, `localStorage`
+and bare `fetch(` returns no unguarded use: the only hit is the `globalThis
+.navigator` read inside the web arm above.
+
+### Verification
+
+```
+cd mobile
+npx tsc --noEmit                        # exit 0
+npx expo export --platform android --output-dir .export-test --clear
+```
+
+```
+Android Bundled 19431ms index.ts (1251 modules)
+android bundles (1):
+_expo/static/js/android/index-*.hbc (3.37 MB)
+```
+
+The 1251 modules include the shared factory: the exported Hermes bundle was
+searched for `createSupabaseClient` and for the `auth/v1`, `rest/v1` and
+`storage/v1` route strings, all present. That is the evidence that the web
+app's data layer actually made it into the native bundle rather than being
+stubbed or tree-shaken.
+
+Not yet verified, because both need hardware: `npx expo start` on a device, and
+an authenticated sign-in against the live project. The 3.37 MB figure is
+pre-`--dev`, un-minified-equivalent Hermes bytecode and is not a release size;
+a production EAS build would be substantially smaller.

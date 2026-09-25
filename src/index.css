@@ -1,1 +1,8 @@
-@import "tailwindcss";
+/* `source(none)` disables Tailwind's automatic source detection, which scans the
+   whole repository. Without it the sibling mobile/ app gets pulled in and its
+   NativeWind class names are emitted into the web stylesheet (+0.98 kB gzip-less
+   CSS for classes the web app never renders). Sources are re-declared explicitly
+   below: the web app only, never the Expo app. */
+@import "tailwindcss" source(none);
+@source "./**/*.{ts,tsx}";
+@source "../index.html";
