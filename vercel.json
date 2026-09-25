@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "//": "App.tsx uses BrowserRouter, so a hard load of /habits or /login would 404 without a rewrite. Vercel serves matching static files before applying rewrites, so this catch-all does not shadow assets, the service worker or the manifest.",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
