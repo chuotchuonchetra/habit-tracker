@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/types'
 
@@ -23,6 +23,14 @@ export function useHabits(userId: string) {
   const [adding, setAdding] = useState(false)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
+
+  // Mirrors completedIds so setCompleted can read live state from a stable
+  // callback. Replayed offline actions run long after the render that queued
+  // them, so reading the state closure would replay a stale decision.
+  const completedIdsRef = useRef(completedIds)
+  useEffect(() => {
+    completedIdsRef.current = completedIds
+  }, [completedIds])
 
   useEffect(() => {
     let cancelled = false
@@ -87,21 +95,29 @@ export function useHabits(userId: string) {
     [],
   )
 
-  const toggleHabit = useCallback(
-    async (habit: Habit): Promise<ActionResult> => {
+  // Drives a habit to an explicit desired state rather than flipping whatever
+  // the current state happens to be. Safe to replay: a repeat call for a state
+  // already reached is a no-op, so a queued action can be retried indefinitely.
+  const setCompleted = useCallback(
+    async (habitId: string, completed: boolean): Promise<ActionResult> => {
       const today = todayISO()
-      setPendingId(habit.id)
 
-      if (completedIds.has(habit.id)) {
-        const { error } = await supabase
-          .from('daily_logs')
-          .delete()
-          .eq('habit_id', habit.id)
-          .eq('completed_at', today)
+      if (completedIdsRef.current.has(habitId) === completed) {
+        return { error: null }
+      }
+
+      setPendingId(habitId)
+
+      if (completed) {
+        const { error } = await supabase.from('daily_logs').insert({
+          habit_id: habitId,
+          user_id: userId,
+          completed_at: today,
+        })
         if (!error) {
           setCompletedIds((prev) => {
             const next = new Set(prev)
-            next.delete(habit.id)
+            next.add(habitId)
             return next
           })
         }
@@ -109,22 +125,28 @@ export function useHabits(userId: string) {
         return { error: error?.message ?? null }
       }
 
-      const { error } = await supabase.from('daily_logs').insert({
-        habit_id: habit.id,
-        user_id: userId,
-        completed_at: today,
-      })
+      const { error } = await supabase
+        .from('daily_logs')
+        .delete()
+        .eq('habit_id', habitId)
+        .eq('completed_at', today)
       if (!error) {
         setCompletedIds((prev) => {
           const next = new Set(prev)
-          next.add(habit.id)
+          next.delete(habitId)
           return next
         })
       }
       setPendingId(null)
       return { error: error?.message ?? null }
     },
-    [completedIds, userId],
+    [userId],
+  )
+
+  const toggleHabit = useCallback(
+    async (habit: Habit): Promise<ActionResult> =>
+      setCompleted(habit.id, !completedIds.has(habit.id)),
+    [setCompleted, completedIds],
   )
 
   const deleteHabit = useCallback(async (id: string): Promise<ActionResult> => {
@@ -152,6 +174,7 @@ export function useHabits(userId: string) {
     reload,
     addHabit,
     updateHabit,
+    setCompleted,
     toggleHabit,
     deleteHabit,
   }
