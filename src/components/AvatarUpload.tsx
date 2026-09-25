@@ -99,9 +99,25 @@ export const AvatarUpload: React.FC<AvatarUploadProps> = ({
     <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-white max-w-sm">
       <div className="relative w-24 h-24 rounded-full overflow-hidden bg-gray-100 border">
         {previewUrl ? (
-          <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+          <img
+            src={previewUrl}
+            alt="Preview"
+            width={96}
+            height={96}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
         ) : avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+          <img
+            src={avatarUrl}
+            alt="Avatar"
+            width={96}
+            height={96}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
             No Avatar

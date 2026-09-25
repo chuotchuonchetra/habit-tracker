@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
+import type { Session, User } from '../lib/supabaseClient'
 
 export type AuthResult = { error: string | null }
 

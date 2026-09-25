@@ -1,13 +1,19 @@
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from './types'
+// src/lib/supabase.ts
+//
+// Environment adapter. The only module that knows how this build reads config;
+// the client itself is built by the framework-free factory in ./supabaseClient.
+import { createSupabaseClient } from './supabaseClient'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+const url = import.meta.env.VITE_SUPABASE_URL
+// The deploy/dashboard name is VITE_SUPABASE_ANON_KEY. PUBLISHABLE_KEY is the
+// newer Supabase name for the same credential, kept as a fallback so existing
+// local .env files keep working.
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
-if (!supabaseUrl || !supabaseKey) {
+if (!url || !key) {
   throw new Error(
-    'Missing Supabase env vars: set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env',
+    'Missing Supabase env vars: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env',
   )
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey)
+export const supabase = createSupabaseClient({ url, key })

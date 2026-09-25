@@ -3,17 +3,21 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "src/App.tsx",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "verify:supabase": "node --experimental-strip-types scripts/verify-supabase-client.ts",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.1",
+    "@supabase/auth-js": "^2.117.1",
+    "@supabase/postgrest-js": "^2.117.1",
+    "@supabase/storage-js": "^2.117.1",
     "@tailwindcss/vite": "^4.3.3",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-router-dom": "^7.18.4",
     "tailwindcss": "^4.3.3"
   },

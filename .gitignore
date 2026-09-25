@@ -25,3 +25,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Expo (the mobile app lives in expo/ with its own node_modules)
+.expo/
+.expo-shared/
